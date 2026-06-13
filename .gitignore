@@ -1,0 +1,24 @@
+# Local Python/cache files
+__pycache__/
+*.py[cod]
+.venv/
+.idea/
+
+# Private machine-specific settings and secrets
+private_config.py
+.env
+
+# Local media/input/output folders
+after_speed/
+before_speed/
+final_merged/
+srt_cn/
+srt_en/
+video_cn/
+video_en/
+video_en_after/
+_merge_tmp/
+
+# Temporary or scratch files
+123.py
+临时程序/
