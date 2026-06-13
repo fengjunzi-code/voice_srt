@@ -96,6 +96,10 @@ DEEPSEEK_API_KEY = ""
 
 WHISPER_MODEL_PATH = Path(r"path\to\faster-whisper-large-v3")
 
+GPT_SOVITS_ROOT = Path(r"path\to\GPT-SoVITS")
+GPT_SOVITS_API_PORT = 23451
+AUTO_START_TTS_API = True
+
 TTS_PROMPT_AUDIO = r"path\to\prompt.wav"
 TTS_PROMPT_AUDIO_TEXT = ""
 
@@ -110,6 +114,9 @@ SOVITS_MODEL_PATH = Path(r"path\to\s2G2333k.pth")
 - `VOICE_SRT_ROOT`
 - `DEEPSEEK_API_KEY`
 - `WHISPER_MODEL_PATH`
+- `GPT_SOVITS_ROOT`
+- `GPT_SOVITS_API_PORT`
+- `AUTO_START_TTS_API`
 - `TTS_PROMPT_AUDIO`
 - `TTS_PROMPT_AUDIO_TEXT`
 - `GPT_MODEL_PATH`
@@ -193,6 +200,6 @@ git status --short --ignored
 ## 注意事项
 
 - DeepSeek API Key 不应提交到 GitHub。如果曾经提交过，请立即去平台后台轮换 Key。
-- `batch_tts.py` 默认请求本机 `http://127.0.0.1:23451/tts`，运行前需要先启动对应 TTS 服务。
+- `batch_tts.py` 默认请求本机 `http://127.0.0.1:23451/tts`。配置 `GPT_SOVITS_ROOT` 后，如果服务未启动，脚本会自动启动 GPT-SoVITS API 并等待接口就绪。脚本结束或被中断时，会关闭本次自动启动的 GPT-SoVITS 进程；如果 API 原本已经在运行，则只复用，不会关闭它。
 - `replace_audio.py`、`merge_audio.py`、`speed_audio.py` 依赖 FFmpeg。
 - 大视频、音频、字幕结果文件默认不进入 Git，只保留代码和配置模板。

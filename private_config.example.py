@@ -13,6 +13,10 @@ DEEPSEEK_API_KEY = ""
 
 WHISPER_MODEL_PATH = Path(r"path\to\faster-whisper-large-v3")
 
+GPT_SOVITS_ROOT = Path(r"path\to\GPT-SoVITS")
+GPT_SOVITS_API_PORT = 23451
+AUTO_START_TTS_API = True
+
 TTS_PROMPT_AUDIO = r"path\to\prompt.wav"
 TTS_PROMPT_AUDIO_TEXT = ""
 

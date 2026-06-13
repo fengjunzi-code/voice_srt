@@ -1,6 +1,8 @@
 import requests
 import re
+import atexit
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -17,7 +19,16 @@ if hasattr(sys.stdout, "reconfigure"):
 # ==========================================
 SRT_INPUT_DIR = paths.SRT_CN_AFTER_DIR
 BEFORE_SPEED_DIR = paths.BEFORE_SPEED_DIR
-API_URL = "http://127.0.0.1:23451/tts"
+API_HOST = os.environ.get("GPT_SOVITS_API_HOST") or paths._private_value("GPT_SOVITS_API_HOST", "127.0.0.1")
+API_PORT = int(os.environ.get("GPT_SOVITS_API_PORT") or paths._private_value("GPT_SOVITS_API_PORT", 23451))
+API_BASE_URL = f"http://{API_HOST}:{API_PORT}"
+API_URL = f"{API_BASE_URL}/tts"
+AUTO_START_TTS_API = str(
+    os.environ.get("AUTO_START_TTS_API") or paths._private_value("AUTO_START_TTS_API", True)
+).lower() not in {"0", "false", "no", "off"}
+TTS_API_START_TIMEOUT = int(
+    os.environ.get("TTS_API_START_TIMEOUT") or paths._private_value("TTS_API_START_TIMEOUT", 180)
+)
 MAX_WORKERS = 4
 
 # ==========================================
@@ -47,6 +58,9 @@ TTS_CONFIG = {
     "sample_steps": 32,
     "super_sampling": False
 }
+
+_started_tts_process: subprocess.Popen | None = None
+_started_tts_log_file = None
 
 
 # ==========================================
@@ -82,6 +96,104 @@ def show_progress(current: float, total: float, start_time: float, prefix=""):
     print(
         f"\r{prefix}: [{bar}] {int(current)}/{int(total)} ({ratio:.1%}) | 已用: {format_time(elapsed)} | 剩余: {format_time(eta)}     ",
         end="", flush=True)
+
+
+def is_tts_api_ready() -> bool:
+    try:
+        response = requests.get(f"{API_BASE_URL}/openapi.json", timeout=2)
+    except requests.RequestException:
+        return False
+
+    if response.status_code != 200:
+        return False
+
+    body = response.text
+    return "StarBox API" in body or '"/tts"' in body
+
+
+def wait_for_tts_api(timeout_seconds: int) -> bool:
+    start_time = time.time()
+    while time.time() - start_time < timeout_seconds:
+        if is_tts_api_ready():
+            return True
+        time.sleep(2)
+    return False
+
+
+def stop_started_tts_api() -> None:
+    global _started_tts_process, _started_tts_log_file
+
+    process = _started_tts_process
+    _started_tts_process = None
+
+    if process and process.poll() is None:
+        print("Stopping GPT-SoVITS API started by this run...")
+        process.terminate()
+        try:
+            process.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=10)
+
+    if _started_tts_log_file:
+        _started_tts_log_file.close()
+        _started_tts_log_file = None
+
+
+def ensure_tts_api_running() -> None:
+    global _started_tts_process, _started_tts_log_file
+
+    if is_tts_api_ready():
+        print(f"TTS API already running: {API_BASE_URL}")
+        return
+
+    if not AUTO_START_TTS_API:
+        raise RuntimeError(f"TTS API is not running: {API_BASE_URL}")
+
+    root_value = os.environ.get("GPT_SOVITS_ROOT") or paths._private_value("GPT_SOVITS_ROOT", "")
+    if not root_value:
+        raise RuntimeError("GPT_SOVITS_ROOT is not configured in private_config.py or the environment")
+
+    gpt_sovits_root = Path(root_value)
+    python_exe = Path(
+        os.environ.get("GPT_SOVITS_PYTHON")
+        or paths._private_value("GPT_SOVITS_PYTHON", gpt_sovits_root / "runtime" / "python.exe")
+    )
+    api_script = Path(
+        os.environ.get("GPT_SOVITS_API_SCRIPT")
+        or paths._private_value("GPT_SOVITS_API_SCRIPT", gpt_sovits_root / "starbox-gpt-sovits-api-v3.py")
+    )
+
+    if not python_exe.exists():
+        raise FileNotFoundError(f"GPT-SoVITS Python not found: {python_exe}")
+    if not api_script.exists():
+        raise FileNotFoundError(f"GPT-SoVITS API script not found: {api_script}")
+
+    log_path = Path(
+        os.environ.get("GPT_SOVITS_API_LOG")
+        or paths._private_value("GPT_SOVITS_API_LOG", Path(__file__).with_name("gpt_sovits_api.log"))
+    )
+    _started_tts_log_file = log_path.open("a", encoding="utf-8", errors="replace")
+
+    cmd = [str(python_exe), str(api_script), "-p", str(API_PORT)]
+    print(f"Starting GPT-SoVITS API: {API_BASE_URL}")
+    _started_tts_process = subprocess.Popen(
+        cmd,
+        cwd=str(gpt_sovits_root),
+        stdout=_started_tts_log_file,
+        stderr=subprocess.STDOUT,
+        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+    )
+    atexit.register(stop_started_tts_api)
+
+    if not wait_for_tts_api(TTS_API_START_TIMEOUT):
+        stop_started_tts_api()
+        raise RuntimeError(
+            f"GPT-SoVITS API did not become ready within {TTS_API_START_TIMEOUT}s. "
+            f"Check log: {log_path}"
+        )
+
+    print(f"GPT-SoVITS API is ready: {API_BASE_URL}")
 
 
 def parse_srt(srt_path: Path) -> list[dict]:
@@ -143,6 +255,7 @@ def process_line(entry: dict, target_dir: Path) -> tuple[bool, int, str]:
 def main():
     # 1. 确保输出根目录存在
     BEFORE_SPEED_DIR.mkdir(parents=True, exist_ok=True)
+    ensure_tts_api_running()
 
     # 2. 获取所有的 .srt 文件
     srt_files = sorted(list(SRT_INPUT_DIR.glob("*.srt")))
