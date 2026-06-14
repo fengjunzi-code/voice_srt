@@ -2,6 +2,10 @@ import subprocess
 import os
 
 import path_config as paths
+from log_utils import install_timestamped_print
+
+
+install_timestamped_print()
 
 
 def batch_replace_audio():

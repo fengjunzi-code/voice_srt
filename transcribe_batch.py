@@ -4,6 +4,10 @@ import time
 from pathlib import Path
 
 import path_config as paths
+from log_utils import install_timestamped_print
+
+
+install_timestamped_print()
 
 
 # =================================================================
@@ -113,7 +117,7 @@ def main():
             f"\n❌ 模型加载失败！\n可能的提示：如果你依然看到 cublas64_12.dll 错误，请尝试手动将该文件从虚拟环境 bin 目录复制到脚本根目录。\n详情: {e}")
         return
 
-    video_files = [f for f in VIDEO_DIR.glob("*") if f.suffix.lower() in [".mp4", ".mkv", ".avi", ".mov"]]
+    video_files = [f for f in VIDEO_DIR.glob("*") if f.suffix.lower() == ".mp4"]
     paths.ensure_unique_safe_stems(video_files, str(VIDEO_DIR))
     if not video_files:
         print(f"⚠️ 提示：请将要处理的视频放入 {VIDEO_DIR} 文件夹")

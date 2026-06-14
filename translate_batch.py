@@ -6,6 +6,10 @@ from openai import OpenAI
 import random
 
 import path_config as paths
+from log_utils import install_timestamped_print
+
+
+install_timestamped_print()
 
 # ==========================================
 # --- 核心配置区 ---

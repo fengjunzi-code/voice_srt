@@ -14,6 +14,11 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+from log_utils import install_timestamped_print
+
+
+install_timestamped_print()
+
 # ==========================================
 # --- 基础路径配置 ---
 # ==========================================

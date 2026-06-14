@@ -7,12 +7,22 @@ import sys
 from pathlib import Path
 
 import path_config as paths
+from log_utils import install_timestamped_print
+
+
+install_timestamped_print()
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
+# 固定前置任务：不受 DEFAULT_TASKS 控制，每次运行流水线都会先执行。
+ALWAYS_ON_TASKS = [
+    "convert_video",
+]
+
 # 内置任务顺序：用户可以跳过某些任务，但实际执行永远按这里的顺序。
 TASK_ORDER = [
+    "convert_video",
     "transcribe_batch",
     "clean_srt_en",
     "translate_batch",
@@ -24,6 +34,7 @@ TASK_ORDER = [
 ]
 
 TASK_SCRIPTS = {
+    "convert_video": SCRIPT_DIR / "convert_video.py",
     "transcribe_batch": SCRIPT_DIR / "transcribe_batch.py",
     "clean_srt_en": SCRIPT_DIR / "clean_srt.py",
     "translate_batch": SCRIPT_DIR / "translate_batch.py",
@@ -84,6 +95,18 @@ def normalize_tasks(values: list[str] | None) -> list[str]:
 
     requested_set = set(requested_lower)
     return [task for task in TASK_ORDER if task in requested_set]
+
+
+def prepend_always_on_tasks(tasks: list[str]) -> list[str]:
+    ordered_tasks = []
+    seen = set()
+
+    for task in ALWAYS_ON_TASKS + tasks:
+        if task not in seen:
+            ordered_tasks.append(task)
+            seen.add(task)
+
+    return ordered_tasks
 
 
 def normalize_roots(values: list[str] | None) -> list[Path]:
@@ -203,6 +226,7 @@ def main() -> int:
 
     try:
         tasks = normalize_tasks(args.tasks)
+        tasks = prepend_always_on_tasks(tasks)
         roots = normalize_roots(args.roots)
         validate_task_scripts(tasks)
     except Exception as exc:

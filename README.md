@@ -5,6 +5,7 @@
 ## 功能
 
 - 批量扫描视频并生成英文 SRT 字幕
+- 自动将 `video_en/` 中的非 MP4 视频转换为 MP4，优先使用封装转换，转换成功后删除原文件
 - 清理英文/中文字幕中的多余内容
 - 使用 DeepSeek API 将英文字幕翻译为中文
 - 调用本地 TTS 服务生成中文配音片段
@@ -19,6 +20,8 @@
 
 ```text
 video_en
+  -> convert_video.py
+video_en/*.mp4
   -> transcribe_batch.py
 srt_en/srt_en_before
   -> clean_srt.py
@@ -136,6 +139,8 @@ python pipeline_runner.py
 python pipeline_runner.py --tasks transcribe_batch clean_srt_en translate_batch
 ```
 
+`convert_video.py` 是固定前置任务，即使指定 `--tasks` 也会在所选任务前先运行。
+
 运行全部任务：
 
 ```bash
@@ -159,6 +164,7 @@ python pipeline_runner.py --dry-run
 ```bash
 python transcribe_batch.py
 python clean_srt.py
+python convert_video.py
 python translate_batch.py
 python batch_tts.py
 python speed_audio.py
@@ -170,7 +176,8 @@ python replace_audio.py
 
 | 脚本 | 作用 |
 | --- | --- |
-| `transcribe_batch.py` | 读取 `video_en/` 中的视频，使用 faster-whisper 生成英文字幕 |
+| `convert_video.py` | 读取 `video_en/` 中的非 MP4 视频，优先用 FFmpeg 封装转换为同名 MP4，失败时再重编码，成功后删除原文件 |
+| `transcribe_batch.py` | 读取 `video_en/` 中的 MP4 视频，使用 faster-whisper 生成英文字幕 |
 | `clean_srt.py` | 清理或复制字幕，支持英文和中文阶段 |
 | `translate_batch.py` | 调用 DeepSeek 将英文字幕翻译为中文字幕 |
 | `batch_tts.py` | 调用本地 TTS 服务，为中文字幕逐句生成 WAV 音频 |

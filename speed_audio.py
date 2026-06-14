@@ -9,6 +9,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import path_config as paths
+from log_utils import install_timestamped_print
+
+
+install_timestamped_print()
 
 # --- 路径配置 (已更新为绝对路径) ---
 SRT_DIR = paths.SRT_CN_AFTER_DIR
