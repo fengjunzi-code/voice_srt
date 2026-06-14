@@ -22,4 +22,6 @@ _merge_tmp/
 
 # Temporary or scratch files
 123.py
+repair_*.py
+*_once.py
 临时程序/
