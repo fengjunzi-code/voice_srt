@@ -8,6 +8,8 @@ __pycache__/
 # Private machine-specific settings and secrets
 private_config.py
 .env
+123.py
+gpt_sovits_api.log
 
 # Local media/input/output folders
 after_speed/
